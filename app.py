@@ -70,7 +70,7 @@ def calculate_symmetry(landmarks_points):
     total_asymmetry_score = sum(asymmetry_scores)
     return total_asymmetry_score / len(SYMMETRY_PAIRS), center_x
 
-
+    
 # --- Kelas Prosesor Video ---
 class VideoProcessor(VideoTransformerBase):
     def __init__(self):
@@ -118,7 +118,7 @@ class VideoProcessor(VideoTransformerBase):
         return av.VideoFrame.from_ndarray(image, format="bgr24")
 
 # --- UI Utama Streamlit ---
-st.title("😎 Analisis Simetri Wajah")
+st.title("Analisis Simetri Wajah")
 st.markdown("Aplikasi ini akan menganalisis tingkat simetri wajah Anda secara *real-time*. Wajah yang lebih simetris seringkali dianggap lebih menarik secara universal.")
 
 # Sidebar untuk kontrol
