@@ -10,16 +10,20 @@
 import asyncio
 import sys
 import platform
+import logging
 
-# Fix asyncio event loop policy for Docker/Linux
+logging.getLogger("aioice").setLevel(logging.WARNING)
+logging.getLogger("aiortc").setLevel(logging.WARNING)
+
 if platform.system() == "Linux":
     try:
-        import uvloop
-
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    except ImportError:
-        # Fallback to default policy
+        # Set a more compatible event loop policy for Docker
         asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+        # Create and set a new event loop for the main thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    except Exception as e:
+        print(f"Event loop setup warning: {e}")
 
 import cv2
 import dlib
@@ -240,6 +244,8 @@ with col1:
                 {"urls": ["stun:stun.l.google.com:19302"]},
                 {"urls": ["stun:stun1.l.google.com:19302"]},
                 {"urls": ["stun:stun2.l.google.com:19302"]},
+                {"urls": ["stun:stun3.l.google.com:19302"]},
+                {"urls": ["stun:stun4.l.google.com:19302"]},
                 {
                     "urls": "turn:openrelay.metered.ca:80",
                     "username": "openrelayproject",

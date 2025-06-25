@@ -30,5 +30,18 @@ COPY . .
 EXPOSE 8501
 
 ENV PYTHONUNBUFFERED=1
+ENV STREAMLIT_SERVER_ENABLE_CORS=false
+ENV STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
 
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+RUN echo '#!/bin/bash\n\
+export PYTHONPATH=/app:$PYTHONPATH\n\
+streamlit run app.py \
+  --server.port=8501 \
+  --server.address=0.0.0.0 \
+  --server.headless=true \
+  --server.enableCORS=false \
+  --server.enableXsrfProtection=false \
+  --logger.level=warning' > /app/start.sh && chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
