@@ -1,16 +1,45 @@
 # --- app.py ---
+# import cv2
+# import dlib
+# import numpy as np
+# import streamlit as st
+# from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
+# import av
+# import threading
+
+import asyncio
+import sys
+import platform
+
+# Fix asyncio event loop policy for Docker/Linux
+if platform.system() == "Linux":
+    try:
+        import uvloop
+
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        # Fallback to default policy
+        asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+
 import cv2
 import dlib
 import numpy as np
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
+from streamlit_webrtc import (
+    webrtc_streamer,
+    VideoTransformerBase,
+    WebRtcMode,
+    RTCConfiguration,
+)
 import av
 import threading
+
 
 # --- Konfigurasi halaman dan tema ---
 st.set_page_config(page_title="Tes Wajah Keren Mu Menurut AI", layout="wide")
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 html, body, [class*="st-"] {
     font-family: 'Segoe UI', sans-serif;
@@ -70,13 +99,16 @@ html, body, [class*="st-"] {
     background-color: #3a3a3a;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # --- Inisialisasi state ---
 if "leaderboard" not in st.session_state:
     st.session_state.leaderboard = []
 if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = None
+
 
 # --- Load model ---
 @st.cache_resource
@@ -85,18 +117,46 @@ def load_models():
     predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
     return detector, predictor
 
+
 face_detector, landmark_predictor = load_models()
 
 # --- Simetri calculation ---
-SYMMETRY_PAIRS = [(0, 16), (1, 15), (2, 14), (3, 13), (4, 12), (5, 11), (6, 10), (7, 9),
-    (17, 26), (18, 25), (19, 24), (20, 23), (21, 22),
-    (36, 45), (37, 44), (38, 43), (39, 42),
-    (48, 54), (49, 53), (50, 52), (60, 64), (61, 63)]
+SYMMETRY_PAIRS = [
+    (0, 16),
+    (1, 15),
+    (2, 14),
+    (3, 13),
+    (4, 12),
+    (5, 11),
+    (6, 10),
+    (7, 9),
+    (17, 26),
+    (18, 25),
+    (19, 24),
+    (20, 23),
+    (21, 22),
+    (36, 45),
+    (37, 44),
+    (38, 43),
+    (39, 42),
+    (48, 54),
+    (49, 53),
+    (50, 52),
+    (60, 64),
+    (61, 63),
+]
+
 
 def calculate_symmetry(landmarks):
     center_x = np.mean([p.x for p in landmarks])
-    score = np.mean([abs((landmarks[l].x - center_x) + (landmarks[r].x - center_x)) for l, r in SYMMETRY_PAIRS])
+    score = np.mean(
+        [
+            abs((landmarks[l].x - center_x) + (landmarks[r].x - center_x))
+            for l, r in SYMMETRY_PAIRS
+        ]
+    )
     return score, center_x
+
 
 # --- Analisis gambar ---
 def analyze_image(image):
@@ -105,7 +165,7 @@ def analyze_image(image):
     if len(faces) == 0:
         return {"face_found": False}
 
-    (x, y, w, h) = sorted(faces, key=lambda f: f[2]*f[3], reverse=True)[0]
+    (x, y, w, h) = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
     rect = dlib.rectangle(int(x), int(y), int(x + w), int(y + h))
     landmarks = landmark_predictor(gray, rect)
     points = [landmarks.part(i) for i in range(68)]
@@ -120,6 +180,7 @@ def analyze_image(image):
 
     return {"face_found": True, "score": score, "image": output}
 
+
 # --- Kelas VideoProcessor dengan live detection ---
 class VideoProcessor(VideoTransformerBase):
     def __init__(self):
@@ -132,7 +193,7 @@ class VideoProcessor(VideoTransformerBase):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         faces = face_detector.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
 
-        for (x, y, w, h) in faces:
+        for x, y, w, h in faces:
             cv2.rectangle(img, (x, y), (x + w, y + h), (255, 192, 203), 2)
             rect = dlib.rectangle(int(x), int(y), int(x + w), int(y + h))
             landmarks = landmark_predictor(gray, rect)
@@ -142,7 +203,15 @@ class VideoProcessor(VideoTransformerBase):
                 cv2.circle(img, (pt.x, pt.y), 2, (0, 255, 255), -1)
 
             score, cx = calculate_symmetry(points)
-            cv2.putText(img, f"Skor: {score:.2f}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(
+                img,
+                f"Skor: {score:.2f}",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2,
+            )
             cv2.line(img, (int(cx), y), (int(cx), y + h), (0, 255, 0), 1)
 
         with self.lock:
@@ -150,9 +219,13 @@ class VideoProcessor(VideoTransformerBase):
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
+
 # --- Judul dan deskripsi ---
 st.markdown("<div class='title'>Test Keren Mu menurut AI</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Analisis Wajah Keren berdasarkan simetri proporsional</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='subtitle'>Analisis Wajah Keren berdasarkan simetri proporsional</div>",
+    unsafe_allow_html=True,
+)
 
 # --- Layout utama ---
 col1, col2 = st.columns([1.05, 0.95])
@@ -160,18 +233,41 @@ col1, col2 = st.columns([1.05, 0.95])
 # --- Kolom kiri: kamera dan input ---
 with col1:
     st.subheader("📸 Live Detection")
-    ctx = webrtc_streamer(
-        key="live",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
-        video_processor_factory=VideoProcessor,
-        media_stream_constraints={"video": True, "audio": False},
-        async_processing=True,
+
+    rtc_config = RTCConfiguration(
+        {
+            "iceServers": [
+                {"urls": ["stun:stun.l.google.com:19302"]},
+                {"urls": ["stun:stun1.l.google.com:19302"]},
+            ]
+        }
     )
+
+    try:
+        ctx = webrtc_streamer(
+            key="live",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=rtc_config,
+            video_processor_factory=VideoProcessor,
+            media_stream_constraints={"video": True, "audio": False},
+            async_processing=True,
+        )
+    except Exception as e:
+        st.error(
+            "WebRTC tidak dapat dimulai. Silakan refresh halaman atau gunakan browser yang mendukung WebRTC."
+        )
+        st.info(
+            "Untuk sementara, Anda dapat menggunakan upload foto sebagai alternatif."
+        )
+        ctx = None
 
     col_input, col_btn = st.columns([3, 1])
     with col_input:
-        username = st.text_input("Masukkan Username", label_visibility="collapsed", placeholder="cth: Maglon Martino / Informatika")
+        username = st.text_input(
+            "Masukkan Username",
+            label_visibility="collapsed",
+            placeholder="cth: Maglon Martino / Informatika",
+        )
     with col_btn:
         analyze = st.button("Analisis")
 
@@ -183,7 +279,9 @@ with col1:
             result = analyze_image(frame)
             st.session_state.analysis_result = result
             if result["face_found"]:
-                st.session_state.leaderboard.append({"username": username, "score": result["score"]})
+                st.session_state.leaderboard.append(
+                    {"username": username, "score": result["score"]}
+                )
                 st.session_state.leaderboard.sort(key=lambda x: x["score"])
 
 # --- Kolom kanan: tab Peringkat & Analisis ---
@@ -199,19 +297,29 @@ with col2:
                 st.markdown(
                     f"<div class='leaderboard-entry'>"
                     f"<span class='rank'>#{i+1}</span> <span>{d['username']}</span> <span>{d['score']:.2f}</span>"
-                    f"</div>", unsafe_allow_html=True)
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
 
     with tab2:
         st.subheader("Hasil Analisis Wajah")
         result = st.session_state.analysis_result
         if result and result["face_found"]:
-            st.image(result["image"], channels="BGR", caption="Hasil deteksi wajah & landmark")
+            st.image(
+                result["image"],
+                channels="BGR",
+                caption="Hasil deteksi wajah & landmark",
+            )
             st.metric("Skor Simetri", f"{result['score']:.2f}")
             score = result["score"]
             if score < 2.0:
-                st.success("✨ Sangat KERENN!!! Sangat simetris! Wajahmu luar biasa proporsional .")
+                st.success(
+                    "✨ Sangat KERENN!!! Sangat simetris! Wajahmu luar biasa proporsional ."
+                )
             elif score < 4.0:
-                st.info("😊 KERENN, Wajah Simetris dan menarik! Ini nilai wajah yang bagus.")
+                st.info(
+                    "😊 KERENN, Wajah Simetris dan menarik! Ini nilai wajah yang bagus."
+                )
             elif score < 6.5:
                 st.warning("😉 Unik dan punya ciri khas. Simetri tetap baik.")
             else:

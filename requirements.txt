@@ -4,3 +4,4 @@ opencv-python
 dlib
 numpy
 av
+uvloop
