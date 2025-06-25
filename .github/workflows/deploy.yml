@@ -48,8 +48,9 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "Pulling latest docker-compose.yml from Git..."
-            git pull origin deploy
+            echo "Updating configuration and code from Git..."
+            git fetch origin
+            git reset --hard origin/deploy
 
             # Log in to the GitHub Container Registry from the server
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
