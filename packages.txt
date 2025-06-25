@@ -1,10 +1,2 @@
-cmake
-ffmpeg
-libsm6
-libxext6
 libgl1-mesa-glx
 libglib2.0-0
-libgtk2.0-dev
-libavcodec-dev
-libavformat-dev
-libswscale-dev
